@@ -1,0 +1,1 @@
+# inventarioz-miniapp
