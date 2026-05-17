@@ -1,0 +1,856 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Inventario</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
+
+  :root {
+    --bg: #0b0b10;
+    --surface: #13131c;
+    --surface2: #1a1a28;
+    --border: #ffffff0f;
+    --accent: #7c6fff;
+    --accent2: #ff6b9d;
+    --accent3: #00e5a0;
+    --text: #f0f0f8;
+    --muted: #6b6b8a;
+    --radius: 16px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* BG noise */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* HEADER */
+  .header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: #0b0b10ee;
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 20px 12px;
+  }
+
+  .header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+
+  .logo {
+    font-family: 'Syne', sans-serif;
+    font-weight: 800;
+    font-size: 20px;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .live-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #00e5a015;
+    border: 1px solid #00e5a030;
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 11px;
+    color: var(--accent3);
+    font-weight: 500;
+  }
+
+  .live-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent3);
+    box-shadow: 0 0 8px var(--accent3);
+    animation: blink 2s infinite;
+  }
+
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* STATS ROW */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    padding: 16px 20px;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 12px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+  .stat-card:nth-child(1)::before { background: var(--accent); }
+  .stat-card:nth-child(2)::before { background: var(--accent2); }
+  .stat-card:nth-child(3)::before { background: var(--accent3); }
+
+  .stat-num {
+    font-family: 'Syne', sans-serif;
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .stat-card:nth-child(1) .stat-num { color: var(--accent); }
+  .stat-card:nth-child(2) .stat-num { color: var(--accent2); }
+  .stat-card:nth-child(3) .stat-num { color: var(--accent3); }
+
+  .stat-label {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-weight: 500;
+  }
+
+  /* SEARCH */
+  .search-wrap {
+    padding: 0 20px 12px;
+  }
+
+  .search-box {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 16px 12px 40px;
+    color: var(--text);
+    font-size: 14px;
+    font-family: 'DM Sans', sans-serif;
+    outline: none;
+    transition: border-color 0.2s;
+    position: relative;
+  }
+
+  .search-wrap-inner {
+    position: relative;
+  }
+
+  .search-icon {
+    position: absolute;
+    left: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .search-box:focus { border-color: var(--accent); }
+  .search-box::placeholder { color: var(--muted); }
+
+  /* FILTER PILLS */
+  .filters {
+    padding: 0 20px 16px;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .filters::-webkit-scrollbar { display: none; }
+
+  .pill {
+    flex-shrink: 0;
+    padding: 7px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 500;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+
+  .pill.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+
+  /* CAT BAR CHART */
+  .cat-section {
+    padding: 0 20px 16px;
+  }
+
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 12px;
+  }
+
+  .cat-bars {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .cat-bar-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .cat-bar-label {
+    font-size: 12px;
+    color: var(--muted);
+    width: 80px;
+    flex-shrink: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .cat-bar-track {
+    flex: 1;
+    height: 6px;
+    background: var(--surface2);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .cat-bar-fill {
+    height: 100%;
+    border-radius: 10px;
+    width: 0%;
+    transition: width 1s cubic-bezier(0.23, 1, 0.32, 1);
+  }
+
+  .cat-bar-count {
+    font-size: 12px;
+    color: var(--muted);
+    width: 20px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* GRID */
+  .grid-section {
+    padding: 0 20px 100px;
+  }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(16px);
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+  }
+
+  .card:active { transform: scale(0.97); }
+
+  .card-img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: cover;
+    background: var(--surface2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 36px;
+  }
+
+  .card-img img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .card-body {
+    padding: 10px 12px 12px;
+  }
+
+  .card-cat {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+  }
+
+  .card-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    line-height: 1.2;
+    margin-bottom: 6px;
+    color: var(--text);
+  }
+
+  .card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .card-qty {
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .card-qty span {
+    font-weight: 700;
+    color: var(--accent3);
+  }
+
+  .card-time {
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  /* EMPTY */
+  .empty {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--muted);
+  }
+
+  .empty-icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-text { font-size: 15px; margin-bottom: 6px; color: var(--text); }
+  .empty-sub { font-size: 13px; }
+
+  /* BOTTOM ADD BTN */
+  .fab {
+    position: fixed;
+    bottom: 24px;
+    right: 20px;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none;
+    color: #fff;
+    font-size: 24px;
+    cursor: pointer;
+    box-shadow: 0 8px 32px #7c6fff44;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+    transition: transform 0.2s;
+  }
+  .fab:active { transform: scale(0.92); }
+
+  /* MODAL */
+  .modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: #00000088;
+    backdrop-filter: blur(8px);
+    z-index: 300;
+    display: none;
+    align-items: flex-end;
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    width: 100%;
+    background: var(--surface);
+    border-radius: 24px 24px 0 0;
+    padding: 24px 20px 40px;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+    border-top: 1px solid var(--border);
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+
+  .modal-handle {
+    width: 36px;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 0 auto 20px;
+  }
+
+  .modal-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 20px;
+    font-weight: 800;
+    margin-bottom: 6px;
+  }
+
+  .modal-desc {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+
+  .modal-cat-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 16px;
+  }
+
+  .modal-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .modal-meta-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+
+  .modal-meta-row:last-child { border-bottom: none; }
+
+  .modal-meta-label { color: var(--muted); }
+  .modal-meta-value { font-weight: 500; }
+
+  .modal-close {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: none;
+    color: var(--muted);
+    font-size: 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* LOADING */
+  .loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    flex-direction: column;
+    gap: 16px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .spinner {
+    width: 32px;
+    height: 32px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* DIVIDER */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 4px 20px 16px;
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-top">
+    <div class="logo">📦 Inventario</div>
+    <div class="live-badge">
+      <div class="live-dot"></div>
+      <span id="total-count">0</span> oggetti
+    </div>
+  </div>
+  <!-- SEARCH -->
+  <div class="search-wrap">
+    <div class="search-wrap-inner">
+      <span class="search-icon">🔍</span>
+      <input class="search-box" id="search" placeholder="Cerca prodotti..." oninput="filterItems()">
+    </div>
+  </div>
+</div>
+
+<!-- STATS -->
+<div class="stats-row" id="stats-row">
+  <div class="stat-card">
+    <div class="stat-num" id="stat-total">0</div>
+    <div class="stat-label">Totale</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" id="stat-cats">0</div>
+    <div class="stat-label">Categorie</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-num" id="stat-oggi">0</div>
+    <div class="stat-label">Oggi</div>
+  </div>
+</div>
+
+<!-- CAT CHART -->
+<div class="cat-section">
+  <div class="section-title">Per categoria</div>
+  <div class="cat-bars" id="cat-bars"></div>
+</div>
+
+<div class="divider"></div>
+
+<!-- FILTERS -->
+<div class="filters" id="filters">
+  <div class="pill active" onclick="setFilter('tutti', this)">🗂 Tutti</div>
+</div>
+
+<!-- GRID -->
+<div class="grid-section">
+  <div class="section-title" id="grid-title">Prodotti</div>
+  <div id="grid-container">
+    <div class="loading">
+      <div class="spinner"></div>
+      Caricamento...
+    </div>
+  </div>
+</div>
+
+<!-- FAB -->
+<button class="fab" onclick="openTelegram()" title="Aggiungi via Telegram">＋</button>
+
+<!-- MODAL DETTAGLIO -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal" style="position:relative">
+    <div class="modal-handle"></div>
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <div id="modal-img" style="width:100%;aspect-ratio:16/9;border-radius:12px;overflow:hidden;margin-bottom:16px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:48px;"></div>
+    <div class="modal-cat-badge" id="modal-cat"></div>
+    <div class="modal-title" id="modal-title"></div>
+    <div class="modal-desc" id="modal-desc"></div>
+    <div class="modal-meta" id="modal-meta"></div>
+  </div>
+</div>
+
+<script>
+// ===================== CONFIG =====================
+const SUPABASE_URL = 'SUPABASE_URL_QUI';
+const SUPABASE_KEY = 'SUPABASE_KEY_QUI';
+
+// ===================== CATEGORIE =====================
+const CATS = {
+  elettronica: { icon: '⚡', color: '#00d4ff' },
+  abbigliamento: { icon: '👕', color: '#ff6b9d' },
+  alimentari: { icon: '🥫', color: '#51cf66' },
+  arredamento: { icon: '🪑', color: '#ffa94d' },
+  strumenti: { icon: '🔧', color: '#cc5de8' },
+  libri: { icon: '📚', color: '#74c0fc' },
+  sport: { icon: '⚽', color: '#ff8787' },
+  altro: { icon: '📦', color: '#868e96' },
+};
+
+// ===================== STATE =====================
+let allItems = [];
+let activeFilter = 'tutti';
+let searchQuery = '';
+let refreshInterval;
+
+// ===================== INIT =====================
+window.addEventListener('load', async () => {
+  // Telegram WebApp init
+  if (window.Telegram?.WebApp) {
+    Telegram.WebApp.ready();
+    Telegram.WebApp.expand();
+    Telegram.WebApp.setHeaderColor('#0b0b10');
+    Telegram.WebApp.setBackgroundColor('#0b0b10');
+  }
+
+  // Animate stat cards
+  anime({
+    targets: '.stat-card',
+    opacity: [0, 1],
+    translateY: [20, 0],
+    delay: anime.stagger(100),
+    duration: 600,
+    easing: 'easeOutCubic'
+  });
+
+  await loadData();
+  refreshInterval = setInterval(loadData, 15000); // refresh ogni 15s
+});
+
+// ===================== LOAD DATA =====================
+async function loadData() {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/inventario?select=*&order=created_at.desc`,
+      { headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}` } }
+    );
+    if (!res.ok) throw new Error('Errore fetch');
+    allItems = await res.json();
+    renderAll();
+  } catch (e) {
+    document.getElementById('grid-container').innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">⚠️</div>
+        <div class="empty-text">Errore di connessione</div>
+        <div class="empty-sub">Controlla SUPABASE_URL e SUPABASE_KEY</div>
+      </div>`;
+  }
+}
+
+// ===================== RENDER ALL =====================
+function renderAll() {
+  updateStats();
+  renderCatBars();
+  renderFilters();
+  renderGrid();
+}
+
+// ===================== STATS =====================
+function updateStats() {
+  document.getElementById('total-count').textContent = allItems.length;
+  document.getElementById('stat-total').textContent = allItems.length;
+
+  const cats = new Set(allItems.map(i => i.categoria)).size;
+  document.getElementById('stat-cats').textContent = cats;
+
+  const oggi = new Date().toDateString();
+  const oggiCount = allItems.filter(i => new Date(i.created_at).toDateString() === oggi).length;
+  document.getElementById('stat-oggi').textContent = oggiCount;
+}
+
+// ===================== CAT BARS =====================
+function renderCatBars() {
+  const counts = {};
+  allItems.forEach(i => { counts[i.categoria] = (counts[i.categoria] || 0) + 1; });
+  const max = Math.max(...Object.values(counts), 1);
+  const sorted = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+  const container = document.getElementById('cat-bars');
+  container.innerHTML = sorted.map(([cat, count]) => {
+    const info = CATS[cat] || CATS.altro;
+    const pct = (count / max * 100).toFixed(0);
+    return `
+      <div class="cat-bar-row">
+        <div class="cat-bar-label">${info.icon} ${cat}</div>
+        <div class="cat-bar-track">
+          <div class="cat-bar-fill" style="background:${info.color}" data-pct="${pct}"></div>
+        </div>
+        <div class="cat-bar-count">${count}</div>
+      </div>`;
+  }).join('');
+
+  // Animate bars
+  setTimeout(() => {
+    document.querySelectorAll('.cat-bar-fill').forEach(el => {
+      el.style.width = el.dataset.pct + '%';
+    });
+  }, 100);
+}
+
+// ===================== FILTERS =====================
+function renderFilters() {
+  const cats = [...new Set(allItems.map(i => i.categoria))];
+  const container = document.getElementById('filters');
+  const pills = cats.map(cat => {
+    const info = CATS[cat] || CATS.altro;
+    const active = activeFilter === cat ? 'active' : '';
+    return `<div class="pill ${active}" onclick="setFilter('${cat}', this)">${info.icon} ${cat}</div>`;
+  });
+  container.innerHTML = `<div class="pill ${activeFilter === 'tutti' ? 'active' : ''}" onclick="setFilter('tutti', this)">🗂 Tutti</div>` + pills.join('');
+}
+
+function setFilter(cat, el) {
+  activeFilter = cat;
+  document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  renderGrid();
+}
+
+function filterItems() {
+  searchQuery = document.getElementById('search').value;
+  renderGrid();
+}
+
+// ===================== GRID =====================
+function renderGrid() {
+  let filtered = allItems;
+  if (activeFilter !== 'tutti') filtered = filtered.filter(i => i.categoria === activeFilter);
+  if (searchQuery) filtered = filtered.filter(i =>
+    i.nome?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    i.descrizione?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const title = activeFilter === 'tutti' ? 'Tutti i prodotti' : `${CATS[activeFilter]?.icon || ''} ${activeFilter}`;
+  document.getElementById('grid-title').textContent = `${title} (${filtered.length})`;
+
+  if (filtered.length === 0) {
+    document.getElementById('grid-container').innerHTML = `
+      <div class="empty">
+        <div class="empty-icon">📭</div>
+        <div class="empty-text">Nessun prodotto trovato</div>
+        <div class="empty-sub">${allItems.length === 0 ? 'Aggiungi il primo prodotto dal bot Telegram' : 'Prova a cambiare filtro'}</div>
+      </div>`;
+    return;
+  }
+
+  const grid = document.createElement('div');
+  grid.className = 'grid';
+  grid.innerHTML = filtered.map((item, i) => {
+    const info = CATS[item.categoria] || CATS.altro;
+    const imgContent = item.foto_url
+      ? `<img src="${item.foto_url}" onerror="this.parentElement.innerHTML='${info.icon}'">`
+      : info.icon;
+    const timeAgo = getTimeAgo(item.created_at);
+    return `
+      <div class="card" onclick="openModal(${JSON.stringify(JSON.stringify(item))})" style="animation-delay:${i * 50}ms">
+        <div class="card-img">${imgContent}</div>
+        <div class="card-body">
+          <div class="card-cat" style="color:${info.color}">${info.icon} ${item.categoria}</div>
+          <div class="card-name">${item.nome}</div>
+          <div class="card-footer">
+            <div class="card-qty">Qtà: <span>${item.quantita || 1}</span></div>
+            <div class="card-time">${timeAgo}</div>
+          </div>
+        </div>
+      </div>`;
+  }).join('');
+
+  document.getElementById('grid-container').innerHTML = '';
+  document.getElementById('grid-container').appendChild(grid);
+
+  // Animate cards
+  anime({
+    targets: '.card',
+    opacity: [0, 1],
+    translateY: [16, 0],
+    delay: anime.stagger(60),
+    duration: 400,
+    easing: 'easeOutCubic'
+  });
+}
+
+// ===================== MODAL =====================
+function openModal(jsonStr) {
+  const item = JSON.parse(jsonStr);
+  const info = CATS[item.categoria] || CATS.altro;
+
+  // Img
+  const imgEl = document.getElementById('modal-img');
+  if (item.foto_url) {
+    imgEl.innerHTML = `<img src="${item.foto_url}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.innerHTML='${info.icon}'">`;
+  } else {
+    imgEl.innerHTML = info.icon;
+  }
+
+  // Cat badge
+  document.getElementById('modal-cat').innerHTML = `${info.icon} ${item.categoria}`;
+  document.getElementById('modal-cat').style.background = info.color + '22';
+  document.getElementById('modal-cat').style.color = info.color;
+  document.getElementById('modal-cat').style.border = `1px solid ${info.color}44`;
+
+  document.getElementById('modal-title').textContent = item.nome;
+  document.getElementById('modal-desc').textContent = item.descrizione || 'Nessuna descrizione';
+
+  document.getElementById('modal-meta').innerHTML = `
+    <div class="modal-meta-row">
+      <span class="modal-meta-label">Quantità</span>
+      <span class="modal-meta-value">${item.quantita || 1}</span>
+    </div>
+    <div class="modal-meta-row">
+      <span class="modal-meta-label">Aggiunto da</span>
+      <span class="modal-meta-value">${item.aggiunto_da || 'Sconosciuto'}</span>
+    </div>
+    <div class="modal-meta-row">
+      <span class="modal-meta-label">Telegram</span>
+      <span class="modal-meta-value">@${item.telegram_user || '-'}</span>
+    </div>
+    <div class="modal-meta-row">
+      <span class="modal-meta-label">Aggiunto il</span>
+      <span class="modal-meta-value">${new Date(item.created_at).toLocaleDateString('it-IT')}</span>
+    </div>
+  `;
+
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('modal-overlay') || e.currentTarget?.classList.contains('modal-close')) {
+    document.getElementById('modal-overlay').classList.remove('open');
+  }
+}
+
+// ===================== FAB =====================
+function openTelegram() {
+  if (window.Telegram?.WebApp) {
+    Telegram.WebApp.close();
+  }
+}
+
+// ===================== UTILS =====================
+function getTimeAgo(date) {
+  const diff = Date.now() - new Date(date).getTime();
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'adesso';
+  if (m < 60) return `${m}m fa`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h fa`;
+  return `${Math.floor(h / 24)}g fa`;
+}
+</script>
+
+<!-- Telegram WebApp SDK -->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+</body>
+</html>
